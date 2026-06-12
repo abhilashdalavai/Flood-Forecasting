@@ -1,0 +1,17 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "basin": "Krishna",
+        "average_discharge": 8000,
+        "alert_threshold": 7000
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[79.7,16.6],[80.9,16.6],[80.9,15.5],[79.7,15.5],[79.7,16.6]]]
+      }
+    }
+  ]
+}

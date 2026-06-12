@@ -1,0 +1,27 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Godavari Basin",
+        "risk_level": "MEDIUM"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[81.0,18.5],[82.5,18.5],[82.5,17.0],[81.0,17.0],[81.0,18.5]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Krishna Basin",
+        "risk_level": "LOW"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[79.5,16.8],[81.0,16.8],[81.0,15.2],[79.5,15.2],[79.5,16.8]]]
+      }
+    }
+  ]
+}

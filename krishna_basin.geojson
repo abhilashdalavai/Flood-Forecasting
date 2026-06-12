@@ -1,0 +1,17 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "basin": "Godavari",
+        "average_discharge": 11000,
+        "alert_threshold": 9000
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[81.2,18.3],[82.3,18.3],[82.3,17.2],[81.2,17.2],[81.2,18.3]]]
+      }
+    }
+  ]
+}

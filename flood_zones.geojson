@@ -1,0 +1,37 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "Krishna" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[80.3,16.3],[80.8,16.3],[80.8,16.8],[80.3,16.8],[80.3,16.3]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Guntur" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[80.2,16.6],[80.7,16.6],[80.7,17.1],[80.2,17.1],[80.2,16.6]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "East Godavari" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[81.5,16.5],[82.2,16.5],[82.2,17.3],[81.5,17.3],[81.5,16.5]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "West Godavari" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[81.0,16.4],[81.6,16.4],[81.6,17.0],[81.0,17.0],[81.0,16.4]]]
+      }
+    }
+  ]
+}
