@@ -1,0 +1,359 @@
+// =====================================================
+// ANDHRA PRADESH FLOOD INTELLIGENCE CONTROL DASHBOARD
+// FULL VERSION (REALTIME + GIS + TIMER + 3D WATER)
+// =====================================================
+
+const API_BASE = "/api";
+
+// =====================================================
+// DATA ARRAYS
+// =====================================================
+
+let trendLabels = [];
+let rainfallData = [];
+let riverFlowData = [];
+let temperatureData = [];
+let humidityData = [];
+let snowFallData = [];
+let snowMeltData = [];
+
+// =====================================================
+// CHART CREATOR
+// =====================================================
+
+function createTrendChart(canvasId, label, color) {
+
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return null;
+
+    return new Chart(canvas, {
+        type: "line",
+        data: {
+            labels: trendLabels,
+            datasets: [{
+                label: label,
+                data: [],
+                borderColor: color,
+                backgroundColor: color + "22",
+                fill: true,
+                tension: 0.35,
+                pointRadius: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            animation: { duration: 600 },
+            scales: { x: { display: false } }
+        }
+    });
+}
+
+// Create Charts
+const rainfallChart = createTrendChart("rainfallChart", "Rainfall (mm)", "#00eaff");
+const riverFlowChart = createTrendChart("riverFlowChart", "River Flow (m³/s)", "#2ecc71");
+const temperatureChart = createTrendChart("temperatureChart", "Temperature (°C)", "#e67e22");
+const humidityChart = createTrendChart("humidityChart", "Humidity (%)", "#3498db");
+const snowFallChart = createTrendChart("snowFallChart", "Snow Fall (mm)", "#00ffff");
+const snowMeltChart = createTrendChart("snowMeltChart", "Snow Melt (mm)", "#9b59b6");
+
+// =====================================================
+// ✅ UPDATED: Probability Chart (BAR instead of doughnut)
+// =====================================================
+
+const probabilityChart = new Chart(
+    document.getElementById("probabilityChart"),
+    {
+        type: "bar", // CHANGED HERE ONLY
+        data: {
+            labels: ["LOW", "MEDIUM", "HIGH"],
+            datasets: [{
+                data: [0, 0, 0],
+                backgroundColor: ["#2ecc71", "#f1c40f", "#e74c3c"]
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 1
+                }
+            }
+        }
+    }
+);
+
+// Model Comparison
+const modelChart = new Chart(
+    document.getElementById("modelComparisonChart"),
+    {
+        type: "bar",
+        data: {
+            labels: ["Random Forest", "XGBoost", "LSTM"],
+            datasets: [{
+                label: "HIGH Risk Probability",
+                data: [0, 0, 0],
+                backgroundColor: ["#3498db", "#9b59b6", "#1abc9c"]
+            }]
+        },
+        options: { responsive: true }
+    }
+);
+
+// =====================================================
+// REALTIME DATA
+// =====================================================
+
+async function fetchRealtimeData() {
+
+    try {
+
+        const response = await fetch(`${API_BASE}/realtime-data`);
+        const data = await response.json();
+
+        const set = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.innerText = value;
+        };
+
+        set("wind_speed", data.wind_speed.toFixed(2));
+        set("rainfall", data.rainfall.toFixed(2));
+        set("river_flow", data.river_flow.toFixed(2));
+        set("temperature", data.temperature.toFixed(2));
+        set("humidity", data.humidity.toFixed(2));
+        set("pressure", data.pressure.toFixed(2));
+        set("flow_direction", data.flow_direction);
+        set("hydrodynamic_index", data.hydrodynamic_index);
+        set("snow_fall", data.snow_fall ? data.snow_fall.toFixed(2) : 0);
+        set("snow_melt", data.snow_melt ? data.snow_melt.toFixed(2) : 0);
+        set("cloud_cover", data.cloud_cover || "N/A");
+        set("storm_activity", data.storm_activity || "Normal");
+        set("surface_moisture", data.surface_moisture || "N/A");
+
+        // Add Trend
+        trendLabels.push(new Date().toLocaleTimeString());
+
+        rainfallData.push(data.rainfall);
+        riverFlowData.push(data.river_flow);
+        temperatureData.push(data.temperature);
+        humidityData.push(data.humidity);
+        snowFallData.push(data.snow_fall || 0);
+        snowMeltData.push(data.snow_melt || 0);
+
+        if (trendLabels.length > 15) {
+            trendLabels.shift();
+            rainfallData.shift();
+            riverFlowData.shift();
+            temperatureData.shift();
+            humidityData.shift();
+            snowFallData.shift();
+            snowMeltData.shift();
+        }
+
+        const updateChart = (chart, dataset) => {
+            if (!chart) return;
+            chart.data.datasets[0].data = dataset;
+            chart.update();
+        };
+
+        updateChart(rainfallChart, rainfallData);
+        updateChart(riverFlowChart, riverFlowData);
+        updateChart(temperatureChart, temperatureData);
+        updateChart(humidityChart, humidityData);
+        updateChart(snowFallChart, snowFallData);
+        updateChart(snowMeltChart, snowMeltData);
+
+        updateWaterLevel(data.river_flow);
+
+    } catch (error) {
+        console.error("Realtime error:", error);
+    }
+}
+
+// =====================================================
+// PREDICTION
+// =====================================================
+
+async function fetchPrediction() {
+
+    try {
+
+        const response = await fetch(`${API_BASE}/predict`);
+        const data = await response.json();
+
+        document.getElementById("risk_level").innerText = data.risk;
+        document.getElementById("confidence").innerText =
+            data.confidence.toFixed(2) + "%";
+
+        document.getElementById("confidence-bar").style.width =
+            data.confidence + "%";
+
+        probabilityChart.data.datasets[0].data = [
+            data.probabilities.LOW,
+            data.probabilities.MEDIUM,
+            data.probabilities.HIGH
+        ];
+        probabilityChart.update();
+
+        modelChart.data.datasets[0].data = [
+            data.model_outputs.random_forest[0][2],
+            data.model_outputs.xgboost[0][2],
+            data.model_outputs.lstm[0][2]
+        ];
+        modelChart.update();
+
+        updateRiskUI(data.risk);
+        updateHeatmap(data.probabilities.HIGH);
+        updateBasinColor(data.probabilities.HIGH);
+
+    } catch (error) {
+        console.error("Prediction error:", error);
+    }
+}
+
+// =====================================================
+// GIS MAP SECTION (RESTORED)
+// =====================================================
+
+let map;
+let heatLayer;
+let andhraLayer;
+
+function initializeMap() {
+
+    map = L.map("map").setView([16.5, 80.6], 7);
+
+    L.tileLayer(
+        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+    ).addTo(map);
+
+    fetch("/api/gis/andhra_pradesh_basins.geojson")
+        .then(res => res.json())
+        .then(data => {
+            andhraLayer = L.geoJSON(data, {
+                style: { color: "#00eaff", weight: 2, fillOpacity: 0.1 }
+            }).addTo(map);
+        });
+
+    fetch("/api/gis/godavari_basin.geojson")
+        .then(res => res.json())
+        .then(data => L.geoJSON(data, {style:{color:"#2ecc71"}}).addTo(map));
+
+    fetch("/api/gis/krishna_basin.geojson")
+        .then(res => res.json())
+        .then(data => L.geoJSON(data, {style:{color:"#f1c40f"}}).addTo(map));
+
+    fetch("/api/gis/flood_zones.geojson")
+        .then(res => res.json())
+        .then(data => L.geoJSON(data, {style:{color:"#e74c3c"}}).addTo(map));
+
+    heatLayer = L.heatLayer([], { radius: 40, blur: 25 }).addTo(map);
+}
+
+function updateHeatmap(intensity) {
+    if (!heatLayer) return;
+
+    const points = [
+        [16.5, 80.6, intensity],
+        [17.2, 82.3, intensity * 0.8],
+        [15.8, 79.9, intensity * 0.6]
+    ];
+
+    heatLayer.setLatLngs(points);
+}
+
+function updateBasinColor(probability) {
+
+    if (!andhraLayer) return;
+
+    andhraLayer.eachLayer(layer => {
+
+        let color = "#2ecc71";
+        if (probability > 0.7) color = "#e74c3c";
+        else if (probability > 0.4) color = "#f1c40f";
+
+        layer.setStyle({
+            fillColor: color,
+            fillOpacity: 0.3 + probability * 0.3
+        });
+    });
+}
+
+// =====================================================
+// RISK UI
+// =====================================================
+
+function updateRiskUI(risk) {
+
+    const riskBox = document.getElementById("risk-display");
+    const banner = document.getElementById("alert-banner");
+
+    riskBox.className = "risk-box";
+
+    if (risk === "HIGH") {
+        riskBox.classList.add("risk-high");
+        banner.classList.remove("hidden");
+    }
+    else if (risk === "MEDIUM") {
+        riskBox.classList.add("risk-medium");
+        banner.classList.add("hidden");
+    }
+    else {
+        riskBox.classList.add("risk-low");
+        banner.classList.add("hidden");
+    }
+}
+
+// =====================================================
+// MISSION TIMER
+// =====================================================
+
+let missionStart = Date.now();
+
+function updateMissionTimer() {
+
+    const diff = Math.floor((Date.now() - missionStart) / 1000);
+
+    const h = String(Math.floor(diff / 3600)).padStart(2, '0');
+    const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
+    const s = String(diff % 60).padStart(2, '0');
+
+    const el = document.getElementById("missionTimer");
+    if (el) el.innerText = `${h}:${m}:${s}`;
+}
+
+setInterval(updateMissionTimer, 1000);
+
+// =====================================================
+// 3D WATER LEVEL
+// =====================================================
+
+function updateWaterLevel(flowValue) {
+
+    const maxFlow = 10000;
+    const percentage = Math.min((flowValue / maxFlow) * 100, 100);
+
+    const waterFill = document.getElementById("waterFill");
+    const waterValue = document.getElementById("waterValue");
+
+    if (!waterFill || !waterValue) return;
+
+    waterFill.style.height = percentage + "%";
+    waterValue.innerText = percentage.toFixed(0) + "%";
+}
+
+// =====================================================
+// AUTO REFRESH
+// =====================================================
+
+function startRealtimeSystem() {
+    fetchRealtimeData();
+    fetchPrediction();
+    setInterval(() => {
+        fetchRealtimeData();
+        fetchPrediction();
+    }, 4000);
+}
+
+startRealtimeSystem();
+initializeMap();

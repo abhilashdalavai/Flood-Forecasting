@@ -1,0 +1,21 @@
+# tests/test_federated.py
+
+import numpy as np
+from app.federated.fedavg_strategy import fedavg
+from app.federated.node_registry import registry
+
+
+def test_fedavg():
+    weights1 = [np.array([1.0, 2.0])]
+    weights2 = [np.array([3.0, 4.0])]
+
+    aggregated = fedavg([weights1, weights2])
+
+    assert np.allclose(aggregated[0], np.array([2.0, 3.0]))
+
+
+def test_node_registry():
+    registry.register_node("Node1")
+    registry.update_participation("Node1")
+
+    assert "Node1" in registry.get_active_nodes()

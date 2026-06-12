@@ -1,0 +1,26 @@
+# tests/test_alerts.py
+
+from app.models.alert_model import Alert
+from app.extensions import db
+
+
+def test_send_alert(client, app):
+
+    payload = {
+        "alert_type": "EMAIL",
+        "basin_name": "Godavari",
+        "risk_level": "HIGH",
+        "message": "Test Alert"
+    }
+
+    response = client.post(
+        "/api/send-alert",
+        json=payload
+    )
+
+    assert response.status_code == 200
+
+    with app.app_context():
+        alert = Alert.query.first()
+        assert alert is not None
+        assert alert.risk_level == "HIGH"

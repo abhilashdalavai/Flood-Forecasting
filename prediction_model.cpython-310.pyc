@@ -1,0 +1,34 @@
+# app/models/prediction_model.py
+
+from app.extensions import db
+from datetime import datetime
+
+
+class Prediction(db.Model):
+    __tablename__ = "predictions"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    risk_level = db.Column(db.String(20), index=True, nullable=False)
+    confidence = db.Column(db.Float, nullable=False)
+
+    model_used = db.Column(db.String(100))
+    ensemble_score = db.Column(db.Float)
+
+    basin_name = db.Column(db.String(100), index=True)
+
+    created_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        index=True
+    )
+
+    def to_dict(self):
+        return {
+            "risk_level": self.risk_level,
+            "confidence": self.confidence,
+            "model_used": self.model_used,
+            "ensemble_score": self.ensemble_score,
+            "basin_name": self.basin_name,
+            "created_at": self.created_at.isoformat()
+        }

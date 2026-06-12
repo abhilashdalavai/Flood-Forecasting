@@ -1,0 +1,68 @@
+import pandas as pd
+import numpy as np
+import joblib
+
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
+import xgboost as xgb
+from tensorflow.keras.models import load_model
+
+
+def evaluate_models():
+
+    df = pd.read_csv("data/final_weather_dataset.csv")
+
+    df["flow_direction"] = df["flow_direction"].map({
+        "East": 0,
+        "West": 1,
+        "North": 2,
+        "South": 3
+    })
+
+    X = df[[
+        "wind_speed",
+        "rainfall",
+        "river_flow",
+        "temperature",
+        "humidity",
+        "pressure",
+        "flow_direction"
+    ]]
+
+    y = df["flood_risk"]
+
+    scaler = joblib.load("trained_models/scaler.pkl")
+    X_scaled = scaler.transform(X)
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_scaled, y, test_size=0.2, random_state=42
+    )
+
+    # Load Models
+    rf = joblib.load("trained_models/random_forest.pkl")
+    xgb_model = joblib.load("trained_models/xgboost.pkl")
+    lstm_model = load_model("trained_models/lstm_model.h5")
+
+    # RF
+    rf_pred = rf.predict(X_test)
+    rf_acc = accuracy_score(y_test, rf_pred)
+
+    # XGB
+    xgb_pred = xgb_model.predict(X_test)
+    xgb_acc = accuracy_score(y_test, xgb_pred)
+
+    # LSTM (convert to sequences)
+    window = 6
+    X_seq = np.repeat(X_test[:, np.newaxis, :], window, axis=1)
+    lstm_pred = np.argmax(lstm_model.predict(X_seq), axis=1)
+    lstm_acc = accuracy_score(y_test, lstm_pred)
+
+    return {
+        "Random Forest Accuracy": round(rf_acc, 4),
+        "XGBoost Accuracy": round(xgb_acc, 4),
+        "LSTM Accuracy": round(lstm_acc, 4),
+        "Confusion Matrix RF": confusion_matrix(y_test, rf_pred).tolist(),
+        "Classification Report RF": classification_report(y_test, rf_pred, output_dict=True)
+    }

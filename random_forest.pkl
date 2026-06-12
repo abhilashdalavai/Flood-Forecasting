@@ -1,0 +1,18 @@
+# tests/test_api.py
+
+def test_realtime_data_endpoint(client):
+    response = client.get("/api/realtime-data")
+    assert response.status_code == 200
+
+    data = response.get_json()
+    assert "wind_speed" in data
+    assert "river_flow" in data
+
+
+def test_prediction_endpoint(client):
+    response = client.get("/api/predict")
+    assert response.status_code == 200
+
+    data = response.get_json()
+    assert "risk" in data
+    assert "confidence" in data

@@ -1,0 +1,6 @@
+# app/services/river_flow_service.py
+
+def calculate_flow_velocity(discharge, area):
+    if area == 0:
+        return 0
+    return discharge / area

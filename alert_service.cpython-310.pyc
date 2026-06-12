@@ -1,0 +1,26 @@
+# app/services/alert_service.py
+
+from app.models.alert_model import Alert
+from app.extensions import db
+from config.constants import ALERT_TEMPLATE
+
+
+def send_alert(alert_type, basin_name, risk, confidence):
+
+    message = ALERT_TEMPLATE.format(
+        basin=basin_name,
+        risk=risk,
+        confidence=round(confidence, 2)
+    )
+
+    alert = Alert(
+        alert_type=alert_type,
+        message=message,
+        basin_name=basin_name,
+        risk_level=risk
+    )
+
+    db.session.add(alert)
+    db.session.commit()
+
+    return alert

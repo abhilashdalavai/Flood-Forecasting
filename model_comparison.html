@@ -1,0 +1,30 @@
+function updateRealtimeData() {
+    fetch("/api/realtime-data")
+        .then(response => response.json())
+        .then(data => {
+
+            document.getElementById("wind_speed").innerText = data.wind_speed;
+            document.getElementById("rainfall").innerText = data.rainfall;
+            document.getElementById("river_flow").innerText = data.river_flow;
+
+            document.getElementById("temperature").innerText = data.temperature;
+            document.getElementById("humidity").innerText = data.humidity;
+            document.getElementById("pressure").innerText = data.pressure;
+
+            document.getElementById("flow_direction").innerText = data.flow_direction;
+
+            document.getElementById("snow_fall").innerText = data.snow_fall;
+            document.getElementById("snow_melt").innerText = data.snow_melt;
+
+            document.getElementById("hydrodynamic_index").innerText = data.hydrodynamic_index;
+
+            document.getElementById("radar_status").innerText = data.radar_status;
+            document.getElementById("satellite_status").innerText = data.satellite_status;
+        });
+}
+
+// Update every 5 seconds
+setInterval(updateRealtimeData, 5000);
+
+// Initial load
+updateRealtimeData();

@@ -1,0 +1,17 @@
+# app/federated/model_serializer.py
+
+import pickle
+
+
+def serialize_weights(weights):
+    """
+    Convert model weights to bytes
+    """
+    return pickle.dumps(weights)
+
+
+def deserialize_weights(serialized_weights):
+    """
+    Convert bytes back to model weights
+    """
+    return pickle.loads(serialized_weights)

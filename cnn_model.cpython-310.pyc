@@ -1,0 +1,20 @@
+# app/ai_models/xgboost_model.py
+
+import joblib
+import numpy as np
+
+
+class XGBoostModel:
+
+    def __init__(self):
+        self.model = joblib.load("trained_models/xgboost.pkl")
+
+    def predict_proba(self, X):
+        """
+        Returns probability distribution for 3 classes:
+        [LOW, MEDIUM, HIGH]
+        """
+        return self.model.predict_proba(X)
+
+    def predict_class(self, X):
+        return np.argmax(self.model.predict_proba(X), axis=1)

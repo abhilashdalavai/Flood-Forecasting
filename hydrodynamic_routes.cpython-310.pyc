@@ -1,0 +1,77 @@
+# app/routes/api_routes.py
+
+from flask import Blueprint, jsonify, request
+from app.services.weather_station_service import save_weather_data
+from app.services.radar_service import get_radar_overlay
+from app.services.satellite_service import get_satellite_data
+from app.realtime.stream_processor import process_stream
+from app.schemas.weather_schema import WeatherSchema
+
+api_bp = Blueprint("api", __name__)
+
+weather_schema = WeatherSchema()
+
+
+# --------------------------------------------------
+# Real-time Weather Data Ingestion (POST)
+# --------------------------------------------------
+
+from flask import jsonify
+import random
+
+@api_bp.route("/realtime-data", methods=["GET","POST"])
+def realtime_data():
+
+    data = {
+        "wind_speed": round(random.uniform(10, 40), 2),
+        "rainfall": round(random.uniform(0, 120), 2),
+        "river_flow": round(random.uniform(3000, 9000), 2),
+        "temperature": round(random.uniform(20, 40), 2),
+        "humidity": round(random.uniform(60, 95), 2),
+        "pressure": round(random.uniform(990, 1020), 2),
+        "flow_direction": random.choice(["East", "West", "North", "South"]),
+        "snow_fall": round(random.uniform(0, 20), 2),
+        "snow_melt": round(random.uniform(0, 10), 2),
+        "hydrodynamic_index": round(random.uniform(0, 1), 2),
+        "radar_status": "Active",
+        "satellite_status": "Operational"
+    }
+
+    return jsonify(data)
+
+# --------------------------------------------------
+# Get Latest Radar Overlay
+# --------------------------------------------------
+
+@api_bp.route("/radar")
+def radar():
+    return jsonify(get_radar_overlay())
+
+
+# --------------------------------------------------
+# Get Satellite Data
+# --------------------------------------------------
+
+@api_bp.route("/satellite")
+def satellite():
+    return jsonify(get_satellite_data())
+
+from app.services.evaluation_service import evaluate_models
+
+@api_bp.route("/evaluation", methods=["GET"])
+def evaluation():
+    return jsonify(evaluate_models())
+# =====================================================
+# GIS FILE SERVING ROUTE
+# =====================================================
+
+import os
+from flask import send_from_directory, current_app
+
+@api_bp.route("/gis/<filename>", methods=["GET"])
+def serve_gis_file(filename):
+
+    base_dir = os.path.join(current_app.root_path, "..", "gis")
+    base_dir = os.path.abspath(base_dir)
+
+    return send_from_directory(base_dir, filename)

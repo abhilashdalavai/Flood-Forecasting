@@ -1,0 +1,156 @@
+# app/services/prediction_service.py
+
+import numpy as np
+import joblib
+import time
+import pandas as pd
+
+from app.ai_models.model_factory import ModelFactory
+from app.models.prediction_model import Prediction
+from app.extensions import db
+from app.services.ensemble_service import weighted_ensemble
+from app.services.email_alert_service import send_email_alert
+from app.services.sms_alert_service import send_sms_alert
+
+
+# ==========================================================
+# Load trained scaler & models once (High performance)
+# ==========================================================
+
+scaler = joblib.load("trained_models/scaler.pkl")
+factory = ModelFactory()
+
+
+# ==========================================================
+# Risk Mapping
+# ==========================================================
+
+RISK_MAP = {
+    0: "LOW",
+    1: "MEDIUM",
+    2: "HIGH"
+}
+
+# ==========================================================
+# Alert Cooldown Protection (Avoid spamming)
+# ==========================================================
+
+last_alert_time = 0
+ALERT_COOLDOWN = 300  # seconds (5 minutes)
+
+
+# ==========================================================
+# Main Prediction Function
+# ==========================================================
+
+def predict_flood(input_data=None, basin_name="Godavari"):
+    """
+    Predict flood risk using ensemble:
+    Random Forest + XGBoost + LSTM
+    """
+
+    global last_alert_time
+
+    try:
+
+        # --------------------------------------------------
+        # Use Provided Input OR Default Demo Input
+        # --------------------------------------------------
+
+        if input_data is None:
+            input_data = {
+                "wind_speed": 22.5,
+                "rainfall": 65.0,
+                "river_flow": 7500,
+                "temperature": 28.4,
+                "humidity": 82,
+                "pressure": 1008,
+                "flow_direction": 0
+            }
+
+        # --------------------------------------------------
+        # Convert Input to DataFrame
+        # --------------------------------------------------
+
+        X_df = pd.DataFrame([input_data])
+
+        # Scale features
+        X_scaled = scaler.transform(X_df)
+
+        # --------------------------------------------------
+        # Get Individual Model Probabilities
+        # --------------------------------------------------
+
+        model_outputs = factory.predict_all(X_scaled)
+
+        # --------------------------------------------------
+        # Ensemble Fusion
+        # --------------------------------------------------
+
+        final_probs = weighted_ensemble(model_outputs)
+
+        predicted_class = int(np.argmax(final_probs))
+        risk = RISK_MAP[predicted_class]
+        confidence = float(np.max(final_probs) * 100)
+
+        # --------------------------------------------------
+        # Save Prediction to Database
+        # --------------------------------------------------
+
+        prediction = Prediction(
+            risk_level=risk,
+            confidence=confidence,
+            ensemble_score=float(np.max(final_probs)),
+            basin_name=basin_name
+        )
+
+        db.session.add(prediction)
+        db.session.commit()
+
+        # --------------------------------------------------
+        # Trigger Alerts (Only if HIGH + Cooldown Passed)
+        # --------------------------------------------------
+
+        current_time = time.time()
+
+        if risk == "HIGH" and (current_time - last_alert_time > ALERT_COOLDOWN):
+
+            try:
+                send_email_alert(risk, confidence)
+            except Exception as e:
+                print("Email alert failed:", e)
+
+            try:
+                send_sms_alert(risk, confidence)
+            except Exception as e:
+                print("SMS alert failed:", e)
+
+            last_alert_time = current_time
+
+        # --------------------------------------------------
+        # Return Clean JSON Response
+        # --------------------------------------------------
+
+        return {
+            "risk": risk,
+            "confidence": round(confidence, 2),
+            "probabilities": {
+                "LOW": float(final_probs[0]),
+                "MEDIUM": float(final_probs[1]),
+                "HIGH": float(final_probs[2])
+            },
+            "model_outputs": {
+                "random_forest": model_outputs["random_forest"].tolist(),
+                "xgboost": model_outputs["xgboost"].tolist(),
+                "lstm": model_outputs["lstm"].tolist()
+            }
+        }
+
+    except Exception as e:
+        print("Prediction Error:", e)
+        return {
+            "risk": "ERROR",
+            "confidence": 0,
+            "probabilities": {"LOW": 0, "MEDIUM": 0, "HIGH": 0},
+            "model_outputs": {}
+        }

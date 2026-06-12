@@ -1,0 +1,15 @@
+import numpy as np
+
+def weighted_ensemble(model_outputs):
+
+    rf = model_outputs["random_forest"][0]
+    xgb = model_outputs["xgboost"][0]
+    lstm = model_outputs["lstm"][0]
+
+    final_probs = (
+        0.3 * rf +
+        0.3 * xgb +
+        0.4 * lstm
+    )
+
+    return final_probs

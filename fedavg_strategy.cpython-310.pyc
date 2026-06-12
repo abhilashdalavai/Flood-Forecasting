@@ -1,0 +1,154 @@
+import pandas as pd
+import numpy as np
+import os
+import joblib
+
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense
+from tensorflow.keras.optimizers import Adam
+
+
+# ---------------------------------------------
+# Sequence Creator
+# ---------------------------------------------
+
+def create_sequences(X, y, window=6):
+    X_seq, y_seq = [], []
+
+    for i in range(len(X) - window):
+        X_seq.append(X[i:i+window])
+        y_seq.append(y[i+window])
+
+    return np.array(X_seq), np.array(y_seq)
+
+
+# ---------------------------------------------
+# LSTM Model Factory
+# ---------------------------------------------
+
+def create_lstm_model(input_shape):
+
+    model = Sequential([
+        LSTM(64, return_sequences=True, input_shape=input_shape),
+        LSTM(32),
+        Dense(16, activation="relu"),
+        Dense(3, activation="softmax")
+    ])
+
+    model.compile(
+        optimizer=Adam(learning_rate=0.001),
+        loss="sparse_categorical_crossentropy",
+        metrics=["accuracy"]
+    )
+
+    return model
+
+
+# ---------------------------------------------
+# FedAvg Aggregation
+# ---------------------------------------------
+
+def fed_avg(local_weights):
+
+    new_weights = []
+
+    for weights in zip(*local_weights):
+        new_weights.append(np.mean(weights, axis=0))
+
+    return new_weights
+
+
+# ---------------------------------------------
+# Load Dataset
+# ---------------------------------------------
+
+df = pd.read_csv("data/final_weather_dataset.csv")
+
+df["flow_direction"] = df["flow_direction"].map({
+    "East": 0,
+    "West": 1,
+    "North": 2,
+    "South": 3
+})
+
+X = df[[
+    "wind_speed",
+    "rainfall",
+    "river_flow",
+    "temperature",
+    "humidity",
+    "pressure",
+    "flow_direction"
+]]
+
+y = df["flood_risk"]
+
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+window = 6
+X_seq, y_seq = create_sequences(X_scaled, y.values, window)
+
+
+# ---------------------------------------------
+# Split Data Into Clients (Simulating Districts)
+# ---------------------------------------------
+
+NUM_CLIENTS = 4
+X_clients = np.array_split(X_seq, NUM_CLIENTS)
+y_clients = np.array_split(y_seq, NUM_CLIENTS)
+
+
+# ---------------------------------------------
+# Federated Training
+# ---------------------------------------------
+
+ROUNDS = 5
+LOCAL_EPOCHS = 2
+
+global_model = create_lstm_model((window, X_seq.shape[2]))
+global_weights = global_model.get_weights()
+
+print("\nStarting Federated Training...\n")
+
+for r in range(ROUNDS):
+
+    print(f"Federated Round {r+1}")
+
+    local_weights = []
+
+    for i in range(NUM_CLIENTS):
+
+        client_model = create_lstm_model((window, X_seq.shape[2]))
+        client_model.set_weights(global_weights)
+
+        client_model.fit(
+            X_clients[i],
+            y_clients[i],
+            epochs=LOCAL_EPOCHS,
+            batch_size=32,
+            verbose=0
+        )
+
+        local_weights.append(client_model.get_weights())
+
+    # Aggregate
+    global_weights = fed_avg(local_weights)
+    global_model.set_weights(global_weights)
+
+print("\nFederated Training Completed.\n")
+
+
+# ---------------------------------------------
+# Save Global Model
+# ---------------------------------------------
+
+os.makedirs("trained_models", exist_ok=True)
+
+global_model.save("trained_models/federated_lstm_model.h5")
+joblib.dump(scaler, "trained_models/scaler.pkl")
+
+print("Federated LSTM Model Saved Successfully.")

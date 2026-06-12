@@ -1,0 +1,34 @@
+# app/models/alert_model.py
+
+from app.extensions import db
+from datetime import datetime
+
+
+class Alert(db.Model):
+    __tablename__ = "alerts"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    alert_type = db.Column(db.String(50), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+
+    basin_name = db.Column(db.String(100))
+    risk_level = db.Column(db.String(20))
+
+    sent_status = db.Column(db.Boolean, default=True)
+
+    created_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        index=True
+    )
+
+    def to_dict(self):
+        return {
+            "alert_type": self.alert_type,
+            "message": self.message,
+            "basin_name": self.basin_name,
+            "risk_level": self.risk_level,
+            "sent_status": self.sent_status,
+            "created_at": self.created_at.isoformat()
+        }

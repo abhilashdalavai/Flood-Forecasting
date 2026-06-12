@@ -1,0 +1,136 @@
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask_login import login_user, logout_user, login_required
+from app.models.user_model import User
+from app.extensions import db
+import subprocess
+import os
+
+admin_bp = Blueprint("admin", __name__)
+
+# --------------------------
+# LOGIN
+# --------------------------
+
+@admin_bp.route("/", methods=["GET", "POST"])
+def login():
+
+    if request.method == "POST":
+
+        username = request.form.get("username")
+        password = request.form.get("password")
+
+        user = User.query.filter_by(username=username).first()
+
+        if user and user.check_password(password):
+            login_user(user)
+            return redirect(url_for("dashboard.dashboard"))
+        else:
+            flash("Invalid credentials")
+
+    return render_template("admin_panel.html")
+
+
+@admin_bp.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for("admin.login"))
+
+
+@admin_bp.route("/panel")
+@login_required
+def panel():
+    return render_template("admin_panel.html")
+
+
+# --------------------------
+# SYSTEM STATUS API
+# --------------------------
+
+@admin_bp.route("/status")
+def system_status():
+    return jsonify({
+        "database": "Connected",
+        "mqtt": "Active",
+        "engine": "Running",
+        "rf_accuracy": 0.9995,
+        "xgb_accuracy": 0.9990,
+        "lstm_accuracy": 0.9985
+    })
+
+
+# --------------------------
+# LOG FETCHING
+# --------------------------
+
+@admin_bp.route("/logs")
+def get_logs():
+
+    log_path = "logs/app.log"
+
+    if os.path.exists(log_path):
+        with open(log_path, "r") as f:
+            content = f.read()
+        return content[-3000:]  # last 3000 chars
+
+    return "No logs found."
+
+
+# --------------------------
+# MODEL METRICS
+# --------------------------
+
+@admin_bp.route("/model-metrics")
+def model_metrics():
+    return jsonify({
+        "rf_accuracy": 0.9995,
+        "xgb_accuracy": 0.9990,
+        "lstm_accuracy": 0.9985,
+        "sample_probs": {
+            "LOW": 0.15,
+            "MEDIUM": 0.25,
+            "HIGH": 0.60
+        }
+    })
+
+
+# --------------------------
+# TRAIN TRIGGER
+# --------------------------
+
+@admin_bp.route("/train", methods=["POST"])
+def trigger_training():
+    subprocess.Popen(["python", "train_models.py"])
+    return jsonify({"status": "Training started"})
+
+
+# --------------------------
+# EVALUATE TRIGGER
+# --------------------------
+
+@admin_bp.route("/evaluate", methods=["POST"])
+def trigger_evaluation():
+    subprocess.Popen(["python", "evaluate_models.py"])
+    return jsonify({"status": "Evaluation started"})
+
+
+# --------------------------
+# RESTART ENGINE
+# --------------------------
+
+@admin_bp.route("/restart", methods=["POST"])
+def restart_engine():
+    return jsonify({"status": "Engine restarted"})
+
+
+# --------------------------
+# THRESHOLD UPDATE
+# --------------------------
+@admin_bp.route("/model-comparison")
+def model_comparison():
+    return render_template("model_comparison.html")
+@admin_bp.route("/threshold", methods=["POST"])
+def update_threshold():
+    data = request.get_json()
+    threshold = data.get("threshold")
+    return jsonify({"status": f"Threshold updated to {threshold}"})

@@ -1,0 +1,10 @@
+# app/services/model_comparison_service.py
+
+def compare_models(model_outputs):
+    best_model = max(model_outputs, key=model_outputs.get)
+
+    return {
+        "best_model": best_model,
+        "best_score": model_outputs[best_model],
+        "all_models": model_outputs
+    }

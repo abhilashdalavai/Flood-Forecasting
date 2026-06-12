@@ -1,0 +1,7 @@
+# app/services/radar_service.py
+
+def get_radar_overlay():
+    return {
+        "status": "active",
+        "image": "/static/images/radar_overlay.png"
+    }

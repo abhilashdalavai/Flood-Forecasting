@@ -1,0 +1,34 @@
+// static/js/hydrodynamic_view.js
+
+async function loadHydrodynamicData() {
+
+    try {
+        const response = await fetch("/api/realtime-data");
+        const data = await response.json();
+
+        const discharge = data.river_flow;
+
+        // Simple simulation equations
+        const depth = discharge * 0.01;
+        const spreadArea = depth * 10;
+        const velocity = discharge / 100;
+
+        document.getElementById("discharge").innerText =
+            discharge.toFixed(2) + " m³/s";
+
+        document.getElementById("depth").innerText =
+            depth.toFixed(2) + " m";
+
+        document.getElementById("area").innerText =
+            spreadArea.toFixed(2) + " km²";
+
+        document.getElementById("velocity").innerText =
+            velocity.toFixed(2) + " m/s";
+
+    } catch (error) {
+        console.error("Hydrodynamic error:", error);
+    }
+}
+
+setInterval(loadHydrodynamicData, 5000);
+loadHydrodynamicData();

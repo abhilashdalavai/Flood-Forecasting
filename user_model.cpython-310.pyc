@@ -1,0 +1,36 @@
+# app/models/river_data_model.py
+
+from app.extensions import db
+from datetime import datetime
+
+
+class RiverData(db.Model):
+    __tablename__ = "river_data"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    basin_name = db.Column(db.String(100), index=True, nullable=False)
+
+    water_level = db.Column(db.Float, nullable=False)
+    discharge_rate = db.Column(db.Float, nullable=False)
+    flow_velocity = db.Column(db.Float)
+
+    flood_depth = db.Column(db.Float)
+    flood_area = db.Column(db.Float)
+
+    created_at = db.Column(
+        db.DateTime,
+        default=datetime.utcnow,
+        index=True
+    )
+
+    def to_dict(self):
+        return {
+            "basin_name": self.basin_name,
+            "water_level": self.water_level,
+            "discharge_rate": self.discharge_rate,
+            "flow_velocity": self.flow_velocity,
+            "flood_depth": self.flood_depth,
+            "flood_area": self.flood_area,
+            "created_at": self.created_at.isoformat()
+        }

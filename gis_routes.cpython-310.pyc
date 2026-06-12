@@ -1,0 +1,31 @@
+# app/routes/alert_routes.py
+
+from flask import Blueprint, request, jsonify
+from app.services.alert_service import send_alert
+from app.schemas.alert_schema import AlertSchema
+
+alert_bp = Blueprint("alert", __name__)
+
+alert_schema = AlertSchema()
+
+
+@alert_bp.route("/send-alert", methods=["POST"])
+def send_alert_route():
+
+    data = request.get_json()
+
+    errors = alert_schema.validate(data)
+    if errors:
+        return {"errors": errors}, 400
+
+    alert = send_alert(
+        alert_type=data["alert_type"],
+        basin_name=data["basin_name"],
+        risk=data["risk_level"],
+        confidence=data.get("confidence", 0)
+    )
+
+    return jsonify({
+        "status": "Alert Sent",
+        "alert_id": alert.id
+    })

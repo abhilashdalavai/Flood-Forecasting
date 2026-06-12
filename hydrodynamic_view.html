@@ -1,0 +1,42 @@
+// static/js/model_comparison.js
+
+async function loadModelComparison() {
+
+    try {
+        const response = await fetch("/api/predict");
+        const data = await response.json();
+
+        const modelOutputs = data.model_outputs;
+
+        const labels = Object.keys(modelOutputs);
+        const values = Object.values(modelOutputs);
+
+        const ctx = document.getElementById("modelChart").getContext("2d");
+
+        new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: "Model Confidence",
+                    data: values,
+                    backgroundColor: "rgba(54, 162, 235, 0.7)"
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 1
+                    }
+                }
+            }
+        });
+
+    } catch (error) {
+        console.error("Model comparison error:", error);
+    }
+}
+
+loadModelComparison();

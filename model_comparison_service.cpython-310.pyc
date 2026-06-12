@@ -1,0 +1,22 @@
+# app/services/federated_service.py
+
+from app.models.federated_model_version import FederatedModelVersion
+from app.extensions import db
+import numpy as np
+
+
+def fedavg(weights_list):
+    return np.mean(weights_list, axis=0)
+
+
+def register_global_model(version, accuracy, loss, nodes):
+    record = FederatedModelVersion(
+        version_number=version,
+        global_accuracy=accuracy,
+        global_loss=loss,
+        participating_nodes=nodes,
+        aggregation_strategy="FedAvg"
+    )
+    db.session.add(record)
+    db.session.commit()
+    return record

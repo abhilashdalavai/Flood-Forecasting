@@ -1,0 +1,8 @@
+# app/services/hydrodynamic_service.py
+
+def calculate_flood_depth(discharge, slope=0.01):
+    return discharge * slope
+
+
+def simulate_inundation_area(depth):
+    return depth * 10
